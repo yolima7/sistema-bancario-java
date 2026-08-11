@@ -45,7 +45,7 @@ Sou estudante de Análise e Desenvolvimento de Sistemas (2º semestre) e este é
 ## 🚧 Limitações conhecidas / próximos passos
 
 - Os dados existem apenas durante a execução do programa (não há persistência em arquivo ou banco de dados ainda)
-- Não há tratamento de exceção para entradas inválidas no `Scanner` (ex: digitar letras em campos numéricos)
+- Não há tratamento de exceção para entradas inválidas no `Scanner` (ex: digitar letras em campos numéricos) // Já foi solucionado! 
 - Próxima evolução planejada: persistência de dados (arquivo ou banco de dados)
 
 ## 🛠️ Tecnologias

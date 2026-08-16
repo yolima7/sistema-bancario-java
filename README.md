@@ -1,57 +1,101 @@
 # 🏦 Banco SGZ — Sistema Bancário em Java
 
-Sistema bancário via console, desenvolvido em Java aplicando conceitos de Programação Orientada a Objetos. O projeto simula as operações essenciais de um banco: cadastro de contas, depósitos, saques, transferências entre contas reais, extrato bancário e exclusão de contas — um CRUD completo, focado inteiramente em back-end/lógica de negócio.
+Sistema bancário via console, desenvolvido em Java aplicando conceitos de Programação Orientada a Objetos (POO) e persistência de dados relacional. O projeto simula as operações essenciais de um banco: cadastro de contas, depósitos, saques, transferências entre contas reais, extrato bancário e exclusão de contas — um CRUD completo, integrado ao PostgreSQL.
 
 ## 📋 Sobre o projeto
 
-Este projeto foi construído de forma incremental, começando com uma única classe simples (`ContaBancaria`, com depósito/saque/transferência) e evoluindo até uma arquitetura com múltiplas classes, cada uma com responsabilidade bem definida — um exercício prático de POO, não só de sintaxe.
+Este projeto foi construído de forma incremental, começando com uma única classe simples (`ContaBancaria`) e evoluindo até uma arquitetura em camadas com padrão DAO (Data Access Object) e integração com banco de dados.
 
 Sou estudante de Análise e Desenvolvimento de Sistemas (2º semestre) e este é um projeto pessoal de estudo, desenvolvido também com apoio de IA como mentoria (orientação sobre design e conceitos, não geração de código pronto) — a lógica, a escrita e as decisões de implementação são minhas.
 
 ## ⚙️ Funcionalidades
 
-- **Cadastro de contas**: cada conta recebe automaticamente um número único, gerado pelo sistema (o usuário nunca escolhe seu próprio número de conta)
-- **Depósito**: com validação de valores inválidos (menores ou iguais a zero)
-- **Saque**: com validação de saldo insuficiente
-- **Transferência entre contas**: busca a conta de destino pelo número (não pelo nome, evitando ambiguidade entre titulares com nomes iguais)
-- **Extrato bancário**: histórico completo de transações, com data e hora formatadas. Em transferências, o extrato se adapta à perspectiva de quem está consultando (mostra "enviada para" ou "recebida de", conforme o caso)
-- **Exclusão de conta**: remove uma conta do sistema a partir do número
+- **Cadastro de contas**: cada conta recebe automaticamente um número único (ID) gerado pela sequência do banco de dados.
+- **Login e busca por ID**: o acesso às operações e a busca de contas são realizados via ID numérico único.
+- **Depósito e Saque**: operações com validação de valores inválidos e saldo insuficiente, atualizando o saldo diretamente no PostgreSQL.
+- **Transferência entre contas**: busca a conta de destino pelo ID e registra a movimentação de forma atômica para ambas as contas.
+- **Extrato bancário persistente**: histórico completo de transações gravado no banco de dados, com data e hora. Em transferências, o extrato adapta a exibição conforme a perspectiva da conta consultada ("enviada para" ou "recebida de").
+- **Exclusão de conta**: remove a conta e suas transações vinculadas no banco de dados.
 
 ## 🧠 Principais decisões de design
 
-- **Separação em `Transacao` como classe própria**: em vez de armazenar apenas texto solto, cada transação é um objeto com tipo, valor, data e participantes — permitindo reaproveitar o mesmo objeto no extrato de ambas as contas envolvidas em uma transferência (por referência, sem duplicação de dados)
-- **Uso de `enum` para o tipo de transação**: evita erros de digitação e garante, em tempo de compilação, que só valores válidos (`DEPOSITO`, `SAQUE`, `TRANSFERENCIA`) sejam usados
-- **Classe `Banco` como gerenciadora central**: aplica o princípio de responsabilidade única — `ContaBancaria` cuida apenas do que é próprio de uma conta; `Banco` cuida de cadastrar, buscar e remover contas dentro do sistema (relação de composição, não herança)
-- **Geração automática de número de conta**: o banco controla um contador interno, eliminando qualquer risco de números duplicados
-- **Separação entre lógica de negócio e interface**: toda a interação via `Scanner`/menu fica isolada na `Main`; as classes de domínio (`ContaBancaria`, `Banco`, `Transacao`) não sabem nada sobre como o usuário interage com o sistema
+- **Persistência Relacional (PostgreSQL + JDBC)**: os dados deixaram de existir apenas na memória e agora são persistidos de forma definitiva no banco de dados.
+- **Padrão DAO (Data Access Object)**: a classe `ContaDAO` isola toda a manipulação do banco de dados (comandos SQL, conexões e `ResultSet`), separando a regra de negócio da camada de dados.
+- **Classe `ConexaoBanco`**: centraliza a criação e o gerenciamento de conexões com o PostgreSQL via driver JDBC.
+- **Separação em `Transacao` como classe própria**: cada movimentação é mapeada como um objeto imutável no Java e persistida na tabela `transacao`.
+- **Classe `Banco` e `Main` desacopladas**: a `Main` cuida apenas da interação via console (`Scanner`), enquanto `Banco` e `ContaDAO` gerenciam as regras de negócio e operações de dados.
 
-## 🏗️ Estrutura de classes
+## 🏗️ Estrutura de arquivos
 
-```
-├── Main.java              → Menu interativo via Scanner (interface do usuário)
-├── Banco.java              → Gerencia a coleção de contas (cadastro, busca, remoção)
-├── ContaBancaria.java       → Representa uma conta (saldo, extrato, operações)
-├── Transacao.java           → Representa uma transação individual (histórico imutável)
-└── TipoTransacao.java       → Enum com os tipos possíveis de transação
-```
+```text
+├── src/
+│   ├── Main.java          → Menu interativo via Scanner (interface do usuário)
+│   ├── Banco.java         → Gerencia regras de negócio e intermediação com o DAO
+│   ├── ContaBancaria.java → Representa a entidade Conta (saldo, titular, operações)
+│   ├── Transacao.java     → Representa a entidade Transação
+│   ├── TipoTransacao.java → Enum com os tipos de transação (DEPOSITO, SAQUE, etc.)
+│   ├── ContaDAO.java      → Camada de acesso ao banco (operações CRUD em SQL)
+│   ├── ConexaoBanco.java  → Gerenciador de conexão com o PostgreSQL (JDBC)
+│   └── schema.sql         → Script DDL para criação da estrutura de tabelas
+🛠️ Tecnologias e Ferramentas
+Java
+PostgreSQL
+Driver JDBC (PostgreSQL Driver)
+IntelliJ IDEA
 
-## ▶️ Como executar
+🗄️ Configuração do Banco de Dados
+Para rodar o projeto no seu computador, é necessário ter o PostgreSQL instalado e configurado.
 
-1. Clone o repositório
-2. Abra o projeto na sua IDE de preferência (desenvolvido com IntelliJ IDEA)
-3. Execute a classe `Main`
-4. Siga as instruções exibidas no menu do console
+1. Criar o Banco de Dados
+No seu cliente SQL (como DBeaver ou pgAdmin), crie um banco de dados chamado sistema_bancario:
 
-## 🚧 Limitações conhecidas / próximos passos
+SQL
+CREATE DATABASE sistema_bancario;
+2. Executar o Script DDL (schema.sql)
+Abra e execute o arquivo src/schema.sql (disponível no projeto) dentro da sua base de dados para criar as tabelas conta e transacao:
 
-- Os dados existem apenas durante a execução do programa (não há persistência em arquivo ou banco de dados ainda)
-- Não há tratamento de exceção para entradas inválidas no `Scanner` (ex: digitar letras em campos numéricos) // Já foi solucionado! 
-- Próxima evolução planejada: persistência de dados (arquivo ou banco de dados)
+SQL
+DROP TABLE IF EXISTS transacao;
+DROP TABLE IF EXISTS conta;
 
-## 🛠️ Tecnologias
+CREATE TABLE conta (
+    id SERIAL PRIMARY KEY,
+    titular VARCHAR(100) NOT NULL,
+    saldo NUMERIC(10, 2) DEFAULT 0.00
+);
 
-- Java
+CREATE TABLE transacao (
+    id SERIAL PRIMARY KEY,
+    tipo VARCHAR(20) NOT NULL,
+    valor NUMERIC(10, 2) NOT NULL,
+    data TIMESTAMP NOT NULL,
+    remetente VARCHAR(100),
+    destinatario VARCHAR(100),
+    conta_id INT REFERENCES conta(id) ON DELETE CASCADE
+);
+3. Ajustar as credenciais no Java
+Abra o arquivo src/ConexaoBanco.java e atualize com as credenciais do seu PostgreSQL local (usuário e senha):
 
----
+Java
+private static final String URL = "jdbc:postgresql://localhost:5432/sistema_bancario";
+private static final String USUARIO = "seu_usuario"; // ex: postgres
+private static final String SENHA = "sua_senha";
+▶️ Como executar
+Clone o repositório:
+
+Bash
+git clone https://github.com/yolima7/sistema-bancario-java.git
+Abra o projeto na sua IDE (ex: IntelliJ IDEA).
+
+Adicione o driver JDBC do PostgreSQL (postgresql-42.x.x.jar) às dependências/bibliotecas do projeto.
+
+Execute o passo a passo de Configuração do Banco de Dados acima.
+
+Execute a classe Main.java.
+
+🚧 Próximos passos
+Tratamento de exceções personalizadas para erros do Scanner e conexões com o banco.
+
+Migração para Spring Boot e Spring Data JPA / Hibernate (mapeamento relacional automático).
 
 Projeto em constante evolução como parte da minha jornada de aprendizado em programação.

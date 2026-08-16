@@ -1,9 +1,14 @@
 import java.util.ArrayList;
 import java.time.format.DateTimeFormatter;
+import java.sql.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 public class ContaBancaria {
     private String titular;
     private int numeroConta;
     private double saldo;
+
     private ArrayList<Transacao> extrato;
 
     public ContaBancaria(String titular, int numeroConta, double saldo){
@@ -26,9 +31,9 @@ public class ContaBancaria {
             System.out.println("Valor invalido, você deve depositar acima de R$0.00");
         }else{
             this.saldo += valor;
+            atualizarSaldoNoBanco();
+            salvarTransacaoNoBanco(TipoTransacao.DEPOSITO, valor, null, null);
             System.out.println("Deposito efetuado na conta de: "+this.titular+"\n valor depositado: R$"+valor);
-            Transacao t = new Transacao(TipoTransacao.DEPOSITO, valor, null, null);
-            this.extrato.add(t);
         }
 
     }
@@ -39,9 +44,9 @@ public class ContaBancaria {
             System.out.println("Saldo insuficiente!");
         }else{
             this.saldo -= valor;
+            atualizarSaldoNoBanco();
+            salvarTransacaoNoBanco(TipoTransacao.SAQUE, valor, null, null);
             System.out.println("Saque efetuado na conta de "+this.titular+ "\n no valor de R$"+valor);
-            Transacao t = new Transacao(TipoTransacao.SAQUE, valor, null, null);
-            this.extrato.add(t);
         }
     }
     public void transferir(ContaBancaria destino, double valor){
@@ -52,14 +57,18 @@ public class ContaBancaria {
         }else{
                 this.saldo -= valor;
                 destino.saldo += valor;
-            System.out.println("Transferencia de R$"+valor+" realizada para " + destino.getTitular() + " com sucesso!");
-            Transacao t = new Transacao(TipoTransacao.TRANSFERENCIA, valor, this.titular, destino.titular);
-            extrato.add(t);
-            destino.extrato.add(t);
+
+                this.atualizarSaldoNoBanco();
+                destino.atualizarSaldoNoBanco();
+
+                salvarTransacaoNoBanco(TipoTransacao.TRANSFERENCIA, valor, this.titular, destino.titular);
+                destino.salvarTransacaoNoBanco(TipoTransacao.TRANSFERENCIA, valor, this.titular, destino.titular);
+                System.out.println("Transferencia de R$"+valor+" realizada para " + destino.getTitular() + " com sucesso!");
         }
     }
     public void exibirExtrato(){
         DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        ArrayList<Transacao> extrato = carregarExtratoDoBanco();
         for(Transacao t: extrato){
             if(t.getTipo() == TipoTransacao.DEPOSITO){
                 System.out.println("Deposito feito em: "+t.getData().format(formato)+ "\n Valor: R$"+t.getValor());
@@ -74,6 +83,56 @@ public class ContaBancaria {
 
             }
         }
+    }
+
+    private void atualizarSaldoNoBanco(){
+        String sql = "UPDATE conta SET saldo = ? where id = ?";
+        try(Connection conn = ConexaoBanco.conectar();
+            PreparedStatement stmt = conn.prepareStatement(sql)){
+            stmt.setDouble(1, this.saldo);
+            stmt.setInt(2, this.numeroConta);
+            stmt.executeUpdate();
+        }catch(SQLException e){
+            System.out.println("Erro ao atualizar saldo: "+e.getMessage());
+        }
+    }
+
+    private void salvarTransacaoNoBanco(TipoTransacao tipo, double valor, String remetente, String destinatario){
+        String sql = "INSERT INTO transacao (tipo, valor, data, remetente, destinatario, conta_id) VALUES (?, ?, ?, ?, ?,?)";
+        try(Connection conn = ConexaoBanco.conectar();
+            PreparedStatement stmt = conn.prepareStatement(sql)){
+            stmt.setString(1, tipo.name());
+            stmt.setDouble(2, valor);
+            stmt.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
+            stmt.setString(4, remetente);
+            stmt.setString(5, destinatario);
+            stmt.setInt(6, this.numeroConta);
+            stmt.executeUpdate();
+        }catch(SQLException e){
+            System.err.println("Erro ao registrar transacao: "+e.getMessage());
+        }
+    }
+
+    private ArrayList<Transacao> carregarExtratoDoBanco(){
+        ArrayList<Transacao> lista = new ArrayList<>();
+        String sql = "SELECT * FROM transacao WHERE conta_id = ? ORDER BY data ASC";
+        try(Connection conn = ConexaoBanco.conectar();
+             PreparedStatement stmt = conn.prepareStatement(sql)){
+             stmt.setInt(1, this.numeroConta);
+             ResultSet rs = stmt.executeQuery();
+             while(rs.next()){
+                 TipoTransacao tipo = TipoTransacao.valueOf(rs.getString("tipo"));
+                 double valor = rs.getDouble("valor");
+                 String remetente = rs.getString("remetente");
+                 String destinatario = rs.getString("destinatario");
+                 Timestamp ts = rs.getTimestamp("data");
+                 LocalDateTime data = ts != null ? ts.toLocalDateTime() : LocalDateTime.now();
+                 lista.add(new Transacao(tipo, valor, data, remetente, destinatario));
+             }
+        }catch(SQLException e){
+            System.err.println("Erro ao carregar extrato: "+e.getMessage());
+        }
+        return lista;
     }
 
 }

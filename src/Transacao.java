@@ -7,12 +7,13 @@ public class Transacao {
     private String remetente;
     private String destinatario;
 
-    public Transacao(TipoTransacao tipo, double valor, String remetente, String destinatario) {
+    public Transacao(TipoTransacao tipo, double valor,LocalDateTime data, String remetente, String destinatario) {
     this.tipo = tipo;
     this.valor = valor;
     this.data = LocalDateTime.now();
     this.remetente = remetente;
     this.destinatario = destinatario;
+    this.data = data;
     }
 
     public TipoTransacao getTipo(){
